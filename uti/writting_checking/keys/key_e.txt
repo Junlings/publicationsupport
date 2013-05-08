@@ -1,0 +1,4 @@
+examine£¬1
+exam,0
+exist,0
+experiment,0

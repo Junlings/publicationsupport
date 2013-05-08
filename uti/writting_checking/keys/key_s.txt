@@ -1,0 +1,2 @@
+singe,1
+simply,0

@@ -1,0 +1,14 @@
+are,1
+a,1
+an,1
+above,1
+absolute,1
+affect,1
+also,1
+amount,1
+accurate,1
+analy,0
+axis,1
+axes,1
+and,1
+assume,0 
