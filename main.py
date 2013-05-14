@@ -3,12 +3,13 @@ import wx
 import wx.aui
 # We're going to be handling files and directories
 import os
-
+from lxml import etree
 # Set up some button numbers for the menu
 from document import document
 
 from generic.dict_tree import MyDictTree
 from generic.generic_frame_simple import GenericFrameSimple
+import cPickle as pickle
 
 ID_ABOUT=101
 ID_OPEN=102
@@ -38,59 +39,9 @@ class MainWindow(GenericFrameSimple):
         
         self.dirname = ''
 
-        '''
-        # Add a text editor and a status bar
-        # Each of these is within the current instance
-        # so that we can refer to them later.
-        self.control = wx.TextCtrl(self.mainpanel, 1, style=wx.TE_MULTILINE,size=(800,600))
-        self.doctree = MyDictTree(self.mainpanel,'model')
-        self.ModelNoteBook = wx.aui.AuiNotebook(self.mainpanel,1,size=(500,500),style=wx.aui.AUI_NB_DEFAULT_STYLE)
-        #self.ModelNoteBook.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
-
-
-        # Set up a series of buttons arranged horizontally
-        self.sizer2 = wx.BoxSizer(wx.HORIZONTAL)
-        self.buttons=[]
-        # Note - give the buttons numbers 1 to 6, generating events 301 to 306
-        # because IB_BUTTON1 is 300
-        
-        functiontext = ['Parse Tex','Export to Word','Button','Button','Button','Button','Button']
-        for i in range(6):
-            # describe a button
-            bid = i+1
-            self.buttons.append(wx.Button(self, ID_BUTTON1+i, functiontext[i]))
-            # add that button to the sizer2 geometry
-            self.sizer2.Add(self.buttons[i],1,wx.EXPAND)
-
-        # Set up the overall frame verically - text edit window above buttons
-        # We want to arrange the buttons vertically below the text edit window
-        self.sizer=wx.BoxSizer(wx.HORIZONTAL)
-        self.sizer.Add(self.doctree,0,wx.EXPAND)
-        self.sizer.Add(self.ModelNoteBook,1,wx.EXPAND)
-        
-        
-
-        # Tell it which sizer is to be used for main frame
-        # It may lay out automatically and be altered to fit window
-        self.SetSizer(self.sizer)
-        self.SetAutoLayout(1)
-        self.sizer.Fit(self)
-
-        # Show it !!!
-        self.Show(1)
-
-        # Define widgets early even if they're not going to be seen
-        # so that they can come up FAST when someone clicks for them!
-        self.aboutme = wx.MessageDialog( self, " A sample editor \n"
-                            " in wxPython","About Sample Editor", wx.OK)
-        self.doiexit = wx.MessageDialog( self, " Exit - R U Sure? \n",
-                        "GOING away ...", wx.YES_NO)
-
-        # dirname is an APPLICATION variable that we're choosing to store
-        # in with the frame - it's the parent directory for any file we
-        # choose to edit in this frame
-        self.dirname = ''
-        '''
+    
+    def OnProjNew(self,event):
+        pass
 
     def OnAbout(self,e):
         # A modal show will lock out the other windows until it has
@@ -205,29 +156,112 @@ class MainWindow(GenericFrameSimple):
         if dlg.ShowModal() == wx.ID_OK:
             # Grab the content to be saved
             # Open the file for write, write, close
-            self.filename=dlg.GetFilename()
-            self.dirname=dlg.GetDirectory()
+            filename=dlg.GetFilename()
+            dirname=dlg.GetDirectory()
+            self.doc.docx_export(dirname,filename)
             
-            self.doc.docx_new()
-            self.doc.docx_add_by_tree()
-            self.doc.docx_save(os.path.join(self.dirname, self.filename))
+            #self.doc.docx_new()
+            #self.doc.docx_add_by_tree()
+            #self.doc.docx_save(os.path.join(self.dirname, self.filename))
             #filehandle=open(os.path.join(self.dirname, self.filename),'w')
             ##filehandle.write(itcontains)
             #filehandle.close()
         # Get rid of the dialog to keep things tidy
         dlg.Destroy()
+    
+    
+    def OpenFile(self,wildcard="*.*"):
+        dlg = wx.FileDialog(self, "Choose a file", self.dirname, "", wildcard, \
+                wx.OPEN|wx.FD_MULTIPLE)
+        if dlg.ShowModal() == wx.ID_OK:
+            # Grab the content to be saved
+            # Open the file for write, write, close
+            filename=dlg.GetFilenames()
+            dirname=dlg.GetDirectory()
+            return dirname,filename
+        else:
+            return None,None
+        dlg.Destroy()        
         
 
+    def NewFolder(self):
+        dialog = wx.DirDialog(None, "Please choose your project directory:",\
+        style=1 ,defaultPath='export', pos = (10,10))
+        if dialog.ShowModal() == wx.ID_OK:
+            _selectedDir = dialog.GetPath()
+            return _selectedDir
+        else:
+            #app.Close()
+            dialog.Destroy()
+            return _userCancel
+                        
+        
+    def OnProjSave(self,event):
+        folder = self.NewFolder()
+        #self.doc.workdir = folder
+        self.doc.exportdst = folder
+        self.doc.ExportProject(folder)
+        
+        
+        
+        
+    def OnFigureOpen(self,event):
+        newfolder,filenames = self.OpenFile()
+        for filename in filenames:
+            self.doc.figurelib.AddBySelect(newfolder,filename)
+        self.DocTreeRefresh()
+    
+    def OnFigure2PNG(self,event):
+        self.doc.FigureEps2Png()
+    
+    def OnFigure2EPS(self,event):pass
+    
+    def OnTableOpen(self,event):
+        newfolder,filenames = self.OpenFile()
+        for filename in filenames:
+            self.doc.tablelib.AddBySelect(newfolder,filename)
+        self.DocTreeRefresh()
+        
+    def OnTable2PNG(self,event):
+        self.doc.TableTex2Png()
+    
+    def OnTable2TEX(self,event):pass
+    
+    def OnEqOpen(self,event):
+        newfolder,filenames = self.OpenFile()
+        for filename in filenames:
+            self.doc.eqlib.AddBySelect(newfolder,filename)
+        self.DocTreeRefresh()
+        
+    def OnEq2PNG(self,event):
+        self.doc.EqTex2Png()
+    
+    def OnEq2TEX(self,event):pass    
     
     
 if __name__ == '__main__':        
     settings = {'title':'my Title','size':(500,500)}
     settings['menuData']=(("&File",
-                            ("&Open", "Open a file to edit", 'OnOpen'),
+                            ("&New", "New Project", 'OnProjNew'),
+                            ("&Save", "Save Project", 'OnProjSave'),
                             ("&Edit", "Clear database", 'OnCloseWindow')),
                        ("&Tex",
                             ("&OpenTex", "Open and Parse the tex file", 'OnTexOpen'),
-                            ("&Parse", "Parse the tex file", 'OnTexOpen')
+                            ),
+                       ("&Figure",
+                            ("&Open", "Open and figure file", 'OnFigureOpen'),
+                            ("&->PNG", "convert to PNG", 'OnFigure2PNG'),
+                            ("&->EPS", "convert to EPS", 'OnFigure2EPS')
+                            ),
+                       ("&Table",
+                            ("&Open", "Open Table files", 'OnTableOpen'),
+                            ("&->PNG", "convert to PNG", 'OnTable2PNG'),
+                            ("&->Tex", "convert to Tex", 'OnTable2TEX')
+                            ),
+                       ("&Equation",
+                            ("&Open", "Open equation files", 'OnEqOpen'),
+                            ("&->PNG", "convert to PNG", 'OnEq2PNG'),
+                            ("&->Tex", "convert to Tex", 'OnEq2TEX')
                             ),
                        ("&Docx",
                             ("&Export", "Export to docx file", 'OnDocxExport')
@@ -237,8 +271,8 @@ if __name__ == '__main__':
     settings['statusbar']=[-1,-1,-1]   
     settings['toolbarData'] = {'Mode':'HORIZONTAL',
                                'Data':[
-                                  ('aa','OnCloseWindow','resource/xy.png'),
-                                  ('bb','OnCloseWindow','resource/xyy.png')
+                                  ('aa','OnTexOpen','resource/xy.png'),
+                                  ('bb','OnDocxExport','resource/xyy.png')
                                 ]}
     # Set up a window based app, and create a main window in it
     app = wx.App()

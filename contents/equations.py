@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from latex_meta_lib import metacls_objlib
+import os.path
 
 class var():
     """ single variable class"""
@@ -104,7 +105,14 @@ class Eq():
         self.itemlib = {}
         self.count = 0
         self.libtype = singleeq
+
+    def AddPng(self,filepath):
+        tf1 = singleeq('png',path=filepath)
         
+        self.Add(tf1)        
+        
+        
+               
 class EqLib():
     ''' variable library'''
     __metaclass__ = metacls_objlib
@@ -138,7 +146,27 @@ class EqLib():
         Eq1.Add(eq1)
 
         self.Add(Eq1)
+
+    def AddBySelect(self,folder,filename,caption=''):
+
+        allowextension = ['tex','wmf''mws']
+        try:
+            basename,extension = filename.split('.')
+            
+        except:
+            return -1
+        sf1 = singleeq(extension,path=os.path.join(folder,filename))
         
+        if extension.lower() in allowextension:
+            if basename not in self.itemlib.keys():
+                f1 = Eq(tag=basename,caption=caption)
+                f1.Add(sf1)
+                self.Add(f1)
+                
+            else:
+                f1 = self.itemlib[basename]
+                f1.Add(sf1)
+                    
         
 if __name__ == '__main__':
     myeqlib = varlib()   

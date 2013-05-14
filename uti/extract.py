@@ -36,7 +36,7 @@ def typejudge(strexp,inditem):
         otype = 'Figure'
     elif 'Table' in label or 'tabel' in label:
         otype = 'Table'
-    elif 'Eq' in label or 'eq' in label:
+    elif 'Eq' in label or 'eq' in label or 'eq.' in label or 'Eq.' in label:
         otype = 'Equation'
     elif 'cite' in label:
         otype = 'Reference'

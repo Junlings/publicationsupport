@@ -12,6 +12,15 @@ from docx import docx #contenttypes, savedocx, relationshiplist, newdocument, ns
 import os
 import glob
 import Image
+import cPickle as pickle
+import random, string
+
+
+def randomword(N):
+   return ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(N))
+
+
+
 
 class line():
     def __init__(self,seq=-1,content='',tag='',ltype='N/A'):
@@ -56,14 +65,16 @@ class document():
         self.eqlib = EqLib()
         self.LineLib = LineLib()
         self.paralib = ParagraphLib()
+        self.tag = 'default'
     
     def GetTreeDict(self):
+        ''' obtain the document tree'''
         treedict = {}
         
-        treedict['figure'] = self.figurelib.itemlib
-        treedict['table'] = self.tablelib.itemlib
-        treedict['equation'] = self.eqlib.itemlib
-        treedict['paragraph'] = self.paralib .itemlib
+        treedict = self.figurelib.GetLibDict('figure',treedict)
+        treedict = self.tablelib.GetLibDict('table',treedict)
+        treedict = self.eqlib.GetLibDict('equation',treedict)
+        treedict = self.paralib.GetLibDict('paragraph',treedict)
         
         return treedict
    
@@ -171,7 +182,7 @@ class document():
     
     def extract(self):
         """
-        Extract the content
+        Extract the content from the tex inputs
         """
         self.labeling()
         
@@ -279,7 +290,8 @@ class document():
                 line_content='text'
                 
             elif line_content == 'text' and line.content[0] != '\\':
-                tag = '_'.join(line.content.split(' ')[0:5])
+                #tag = '_'.join(line.content.split(' ')[0:5])
+                tag = 'PARA'+randomword(10)
                 #print tag
                 current_paragraph = self.AddParagraphFromTex(tag,line.content)
                 if current != None:  # not support abstract for now
@@ -299,7 +311,19 @@ class document():
     
     
     
+    def export_struc(self,filename):
+        ''' export the xml document structure'''
+        self.struct.exportfile(filename)
+
     
+    
+    def docx_export(self,dirname,filename):
+        self.docx_new()
+        self.docx_add_by_tree()
+        self.docx_add_figure_by_list()
+        self.docx_add_table_by_list()
+        self.docx_add_equation_by_list()
+        self.docx_save(os.path.join(dirname, filename))        
     
     def docx_new(self):
         
@@ -326,7 +350,7 @@ class document():
                 self.docx_add_section(node.text,3)
             elif node.tag == 'paragraph':
                 para = self.GetPara(node.text)
-                self.docx_add_paragraph(para.wholetext)
+                self.docx_add_paragraph('['+para.tag+']'+para.wholetext)
                 
                 # record figure list
                 self.docx['figurelist'].extend(para.itemdict['Figure'])
@@ -349,8 +373,10 @@ class document():
     def docx_add_figure(self,imagefilename,description):
         self.docx['relationships'], picpara = docx.picture(self.docx['relationships'], imagefilename,
                                          description)
+        self.docx['body'].append(docx.pagebreak(type='page', orient='portrait'))
         self.docx['body'].append(picpara)
-    
+        self.docx['body'].append(docx.paragraph(description))
+        
     def docx_add_figure_from_lib(self,key):
         figure = self.figurelib.itemlib[key]
         
@@ -359,14 +385,29 @@ class document():
             imgfile = os.path.join(self.exportdst,self.exportfolder['figure'],singlefigure.path)
             self.docx_add_figure(imgfile,figure.caption)
         
+
+    def docx_add_eq_from_lib(self,key):
+        equation = self.eqlib.itemlib[key]
+        
+        if 'png' in equation.itemlib.keys():
+            singleeq = equation.itemlib['png']
+            imgfile = os.path.join(self.exportdst,self.exportfolder['equation'],singleeq.path)
+            self.docx_add_figure(imgfile,equation.caption)
+        elif 'tex' in equation.itemlib.keys():
+            self.docx_add_paragraph(equation.caption)  
+            self.docx_add_paragraph(equation.itemlib['tex'].latex)            
+            
     def docx_add_table_from_lib(self,key):
         table = self.tablelib.itemlib[key]
         
         if 'png' in table.itemlib.keys():
             singletable = table.itemlib['png']
             imgfile = os.path.join(self.exportdst,self.exportfolder['table'],singletable.path)
-            self.docx_add_figure(imgfile,table.caption)        
-        
+            #self.docx_add_paragraph(table.caption)  
+            self.docx_add_figure(imgfile,table.caption)
+            
+        elif 'tex' in table.itemlib.keys():
+            self.docx_add_paragraph(table.itemlib['tex'].latex)           
     
     def docx_add_figure_by_list(self):
         
@@ -377,7 +418,13 @@ class document():
         
         for key in self.docx['tablelist']:
             self.docx_add_table_from_lib(key)        
+
+    def docx_add_equation_by_list(self):
+        
+        for key in self.docx['equationlist']:
+            self.docx_add_eq_from_lib(key)        
     
+        
     def docx_cofigure(self):
         pass
     
@@ -413,6 +460,7 @@ class document():
             latextext = '\[' + latextext + '.\]'
             #print latextext
             math2png([latextext],os.path.join(self.exportdst,self.exportfolder['equation'],item.tag),prefix=item.tag)
+            item.AddPng(os.path.join(item.tag,item.tag+'.png'))
     
     def TableTex2Png(self):
         for key,item in self.tablelib.itemlib.items():
@@ -423,7 +471,7 @@ class document():
             table2png([latextext],tablename,prefix=item.tag)        
             
             # add png file format to the library
-            item.AddPng(os.path.join(item.tag,item.tag+'1.png'))
+            item.AddPng(os.path.join(item.tag,item.tag+'.png'))
             
     def FigureEps2Png(self):
         for key,item in self.figurelib.itemlib.items():
@@ -450,18 +498,37 @@ class document():
     def ExportProject(self,desinationfolder):
         ''' save project in destination folder'''
         self.exportdst = desinationfolder
-        self.exportfolder = {'equation':'equation','figure':'img','table':'table'}
+        self.exportfolder = {'equation':'equation','figure':'img','table':'table','paragraph':'paragraph'}
         
+        # export all components
+        self.ExportParaLib(os.path.join(desinationfolder,self.exportfolder['paragraph']))
         self.ExportFigureLib(os.path.join(desinationfolder,self.exportfolder['figure']))
         self.ExportTableLib(os.path.join(desinationfolder,self.exportfolder['table']))
         self.ExportEqLib(os.path.join(desinationfolder,self.exportfolder['equation']))
         
-        ##self.ExportFigureLib(r'M:\github\publicationsupport\test\export\img')
-        #self.ExportTableLib(r'M:\github\publicationsupport\test\export\table')
-        #self.ExportEqLib(r'M:\github\publicationsupport\test\export\equation')
-    
-
+        filename = os.path.join(self.exportdst,self.tag+'.xml')
+        self.export_struc(filename)
         
+        fp = open(os.path.join(self.exportdst,self.tag+'.lib'),'w')
+        
+        lib = {'equation':self.eqlib,'figure':self.figurelib,'table':self.tablelib,'paragraph':self.paralib}
+        pickle.dump(lib,fp)
+        
+        
+
+    def ExportParaLib(self,parafolder):
+        ensure_dir(parafolder)
+        
+        for key, item in self.paralib.itemlib.items():
+            #dstroot = os.path.join(parafolder,key)
+            #ensure_dir(dstroot)
+            
+            fp = open(os.path.join(parafolder,item.tag+'.tex'),'w')
+            
+            fp.write(item.wholetext)
+            fp.close()
+            
+    
     def ExportFigureLib(self,figurefolder):
         ''' save figure to figure folder  '''
         ensure_dir(figurefolder)
@@ -579,9 +646,9 @@ if __name__ == '__main__':
     d1.docx_add_figure_by_list()
     d1.docx_add_table_by_list()
     #d1.docx_add_figure(r'M:\github\publicationsupport\test\export\img\Fig_compout_setup4\Fig_compout_setup4.png','this is a test')
-    d1.docx_save(r'M:\github\publicationsupport\test\export\text.docx')
+    #d1.docx_save(r'M:\github\publicationsupport\test\export\text.docx')
     
-    #d1.EqTex2Png()
+    d1.EqTex2Png()
     #d1.FigureImportFolder(r'M:\github\publicationsupport\test\img')
     
     

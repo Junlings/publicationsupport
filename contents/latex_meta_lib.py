@@ -44,6 +44,21 @@ def Meta_AddList(obj,*varlist):
     for var in varlist:
         obj.AddSingle(var)
     
+def Meta_GetLibDict(obj,tagkey,dictitem):
+    ''' meta function to get dictionary from nested itemlibs'''
+    if 'itemlib' in obj.__dict__:
+        temp = {}
+        for key,item in obj.itemlib.items():
+            if 'itemlib' in item.__dict__:
+                temp = item.GetLibDict(key,temp)
+            else:
+                temp[key] = item
+        dictitem[tagkey] = temp
+        
+    else:
+        dictitem[tagkey] = obj
+    
+    return dictitem
 
 class metacls_objlib(type):
     """
@@ -59,6 +74,7 @@ class metacls_objlib(type):
         #classdict['tag'] = Meta_settag
         classdict['CheckKey'] = Meta_CheckKey
         classdict['AddSingle'] = Meta_AddSingle
+        classdict['GetLibDict'] = Meta_GetLibDict
         classdict['AddList'] = Meta_AddList
         classdict['Add'] = Meta_Add
         classdict['New'] = Meta_New

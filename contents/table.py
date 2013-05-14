@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from latex_meta_lib import metacls_objlib
+import os.path
 
 class SingleTable():
     ''' single figure class'''
@@ -67,5 +68,24 @@ class TableLib():
         
         return t1
     
+    def AddBySelect(self,folder,filename,caption=''):
 
+        allowextension = ['tex','xls''xlsx']
+        try:
+            basename,extension = filename.split('.')
+            
+        except:
+            return -1
+        sf1 = SingleTable(path=os.path.join(folder,filename),tag=extension)
+        
+        if extension.lower() in allowextension:
+            if basename not in self.itemlib.keys():
+                f1 = Table(tag=basename,caption=caption)
+                f1.Add(sf1)
+                self.Add(f1)
+                
+            else:
+                f1 = self.itemlib[basename]
+                f1.Add(sf1)
+            
         

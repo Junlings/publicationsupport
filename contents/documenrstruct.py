@@ -30,8 +30,18 @@ class DocumentStruct():
     
     def pretty(self):
         return etree.tostring(self.root, pretty_print=True)
+    
+    def exportfile(self,filename):
 
-
+        #filename='/tmp/test.xml'
+        with open(filename,'w') as f:
+            f.write(etree.tostring(self.root))
+    
+    def importfile(self,filename):
+        with open(filename,'r') as f:
+            content = f.read()
+        myobject=self.root.fromstring(content)
+    
 if __name__ == '__main__':
     
     p1 = Paragraph('p1')

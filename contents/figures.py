@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from latex_meta_lib import metacls_objlib
+import os.path
 
 class SingleFigure():
     ''' single figure class'''
@@ -54,6 +55,22 @@ class FigureLib():
         f1.Add(sf1)
         self.Add(f1)
         
+    def AddBySelect(self,folder,filename,caption=''):
+
+        
+        basename,extension = filename.split('.')
+        sf1 = SingleFigure(path=os.path.join(folder,filename),iformat=extension)
+        
+        if basename not in self.itemlib.keys():
+            f1 = Figure(tag=basename,caption=caption)
+            f1.Add(sf1)
+            self.Add(f1)
+            
+        else:
+            f1 = self.itemlib[basename]
+            f1.Add(sf1)
+            
+                        
         
 
 if __name__ == '__main__':

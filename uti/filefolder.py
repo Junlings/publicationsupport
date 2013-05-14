@@ -8,7 +8,7 @@ def ensure_dir(f):
         
         
 def copyfile(srcfile,dstname,dstroot):
-    assert not os.path.isabs(srcfile)
+    #assert not os.path.isabs(srcfile)
     filename = os.path.basename(srcfile)
     dstdir =  os.path.join(dstroot, dstname)
     

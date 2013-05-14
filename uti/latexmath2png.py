@@ -76,7 +76,7 @@ def __write_output(infile, outdir, workdir = '.', prefix = '', size = 1):
         dvifile = infile.replace('.tex', '.dvi')
         outprefix = os.path.join(outdir, prefix)
         dvicmd = "dvipng -T tight -x %i -z 9 -bg Transparent "\
-                "-o %s%%d.png %s" % (size * 1000, outprefix, dvifile) #"-o %s%%d.png %s" % (size * 2000, outprefix, dvifile)
+                "-o %s.png %s" % (size * 1000, outprefix, dvifile) #"-o %s%%d.png %s" % (size * 2000, outprefix, dvifile)
         rc = os.system(dvicmd)
         if rc != 0:
             raise Exception('dvipng error')
